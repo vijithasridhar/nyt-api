@@ -5,18 +5,17 @@
 # idea/help credz to https://georeferenced.wordpress.com/2013/01/15/rwordcloud/ and 
 # http://web.stanford.edu/~cengel/cgi-bin/anthrospace/scraping-new-york-times-articles-with-r
 
-library(RJSONIO)
-library(RCurl)
-library(ggplot2)
-library(tm)
-library(wordcloud)
-library(topicmodels)
+suppressMessages(library(RJSONIO))
+suppressMessages(library(RCurl))
+suppressMessages(library(ggplot2))
+suppressMessages(library(tm))
+suppressMessages(library(wordcloud))
+suppressMessages(library(topicmodels))
 
 dev.new(width=11, height=7)
 
 api <- "fd71886491edcd0a22a2e93cd30c2be7:18:59638065"
-records <- 300 
-pageRange <- 0:(records/10-1)
+pageRange <- 0:100          # max page is 100 - pagination past that isn't allowed rn
 q <- "hillary+clinton"      # Query string, use + instead of space
 moreStopwords <- c("hillary", "rodham", "clinton", "(s)", "new", "says", "can", "may", "u..", "senate", "senator")
 
@@ -25,26 +24,30 @@ startYear <- 2006
 endYear <- 2010
 
 for (y in startYear:endYear) {
+    print(paste("Loading data for year", y))
     beginDate <- paste0(y, "0101")         #YYYYMMDD
     endDate <- paste0(y, "1231")           #YYYYMMDD
 
     dates <- c()
     headlines <- c()
-
+    count <- 0
     for (i in pageRange) {
         uri <- paste0("http://api.nytimes.com/svc/search/v2/articlesearch.json?q=", q, 
                     "&page=", i, "&fl=pub_date,headline&begin_date=", beginDate,"&end_date=", endDate, "&api-key=", api)
+        
         d <- getURL(uri)
         res <- fromJSON(d,simplify = FALSE)
-        for (j in 1:10) {
+        jend <- ifelse(length(res$response$docs) != 10, length(res$response$docs), 10)
+        for (j in 1:jend) {
             # concat all dates/abstracts
             dates <- append(dates, unlist(res$response$docs[[j]]$pub_date))
             headlines <- append(headlines, unlist(res$response$docs[[j]]$headline$main))
+            count <- count + 1
         }
+        if (jend != 10) break
     }
 
-    print(paste("Year:", y))
-    # print(headlines)
+    print(paste("YEAR:", y, "    Number of records:", count))       # for some reason \t isn't working; TODO look into this
 
     dateChars <- as.character(dates)
     yearCount <- substr(dateChars, 0, 4)        # dates by years
